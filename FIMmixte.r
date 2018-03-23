@@ -28,20 +28,20 @@ nn <- as.integer(readline(prompt = ""))
 dose<-c(100)
 
 #enter designs
+t <- c()
 for(i in 1:nn){
   cat("Enter the ",i,"th group initial design \n")
   cat("Enter the quantity of this design \n")
-  ni <- as.integer(readline(prompt = ""))
+  ni[i] <- as.integer(readline(prompt = ""))
   ti=c()
-  for(j in 1:ni){
+  for(j in 1:ni[i]){
     tij <- as.numeric(readline(prompt = ""))
     ti <- c(ti,tij)
   }
   
-  
-  
+  t <- c(t,ti) 
 }
-t<-c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)
+#t<-c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)
 
 #Fixed effects parameters values
 beta<-c(1.6,8,0.13)
@@ -80,11 +80,9 @@ f<-function(paramF){eval(equatf[[1]])}
 ka = beta[1]
 V = beta[2]
 Cl = beta[3]
-param <- list()
-for(i in 1:nn){
-  param <- c(param,beta,t[i])
-}
 
+param <- c(beta,t)
+#calculate the observations with personnal parameters
 fixed<-f(param)
 
 
@@ -92,11 +90,6 @@ fixed<-f(param)
 #Standard deviation of residual error (sig.inter+sig.slope*f)^2:
 sig.inter<-0.6
 sig.slope<-0.07
-
-
-#lambda<-c(sig.inter, sig.slope)
-
-#psi<-c(beta,lambda)
 
 var<-diag((sig.inter+sig.slope*fixed)^2)
 
