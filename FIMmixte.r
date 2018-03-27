@@ -48,7 +48,7 @@ omega<-diag(c(0.7,0.02,0.06))
 
 #Random effect model (1) = additive  (2) = exponential 
 #------------------------------------------------------------------
-Trand<-2;
+Trand<-1;
 
 if ( Trand == 1 ) {
 #   beta <- beta + rnorm(length(t)*length(paramName), mean = 0, sd = omega)
@@ -103,26 +103,17 @@ df<-deriv(equatf[[1]],PSI)
 mdf<-attributes(eval(df))$gradient
 #delete the last two columns (correspond to sig.inter and sig.slope) 
 mdfi <- mdf[,-c(length(PSI)-1,length(PSI))]
-#calculate variance Vi
-Vi <- mdfi %*% omega %*% t(mdfi) + var
+if(Trand ==2 ){
+  mdfie <- mdfi %*% diag(beta)
+}else {mdfie <- mdfi}
 
-#-------------------------------------delete----------
-#calculate the matrix dVi/dlambda
-# the first three columns of dVi/dlambda
-dvi <- mdfi %*% diag(1,length(paramName)) %*% t(mdfi) 
-#combine the last two columns of dVi
+#calculate variance Vi
+Vi <- mdfie %*% omega %*% t(mdfie) + var
+
+
 dv<-deriv(Vmodel[[1]],PSI)
 mdv<-attributes(eval(dv))$gradient
-dvi<-cbind(dvi,mdv[,length(PSI)-1],mdv[,length(PSI)])
-dvi <- diag(diag(dvi))
-# for(i in 1:length(paramName)){
-#   mdv[,i]=0
-# }
-# m<- list()
-# for(i in (length(paramName)+1):length(PSI)){
-#   m[[i-length(paramName)]] <- diag(mdv[,i])
-# }
-#----------------------------------delete---------------
+
 
 M_A <- t(mdfi) %*% solve(Vi) %*% mdfi 
 for(i in 1:length(PSI)){
@@ -134,14 +125,20 @@ M_B <- matrix(rep(0),nrow=length(PSI)+length(paramName),ncol=length(PSI)+length(
 for(i in 1:length(paramName)){
   
   for(j in 1:length(paramName)){
-    M_B[length(paramName)+i,length(paramName)+j] <- 1/2 * sum(diag(((mdfi[,i] %*% t(mdfi[,i])) %*% solve(Vi) %*% (mdfi[,j] %*% t(mdfi[,j])) %*% solve(Vi))))
+    M_B[length(paramName)+i,length(paramName)+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% solve(Vi) %*% (mdfie[,j] %*% t(mdfie[,j])) %*% solve(Vi))))
+  }
+  for(j in (length(PSI)-1):length(PSI)){
+    M_B[length(paramName)+i,length(paramName)+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% solve(Vi) %*% diag(mdv[,j]) %*% solve(Vi))))
   }
   
 }
 
-for(k in 4:5){
-  for(l in 4:5){
-    M_B[3+k,3+l] <- 1/2 * sum(diag(diag(mdv[,k]) %*% solve(Vi) %*% diag(mdv[,l]) %*% solve(Vi)))
+for(i in (length(PSI)-1):length(PSI)){
+  for(j in 1:length(paramName)){
+    M_B[length(paramName)+i,length(paramName)+j] <- 1/2 * sum(diag( diag(mdv[,i]) %*% solve(Vi) %*% (mdfie[,j] %*% t(mdfie[,j])) %*% solve(Vi)))
+  }
+  for(j in (length(PSI)-1):length(PSI)){
+    M_B[length(paramName)+i,length(paramName)+j] <- 1/2 * sum(diag(diag(mdv[,i]) %*% solve(Vi) %*% diag(mdv[,j]) %*% solve(Vi)))
   }
 }
 M_F <- M_A+M_B
