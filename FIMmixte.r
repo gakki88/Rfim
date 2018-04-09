@@ -1,58 +1,27 @@
+funFIMem <- function(equation,beta,o,sigma,t_group,Trand,d,nbSubjects){
 #Name of the fixed effects parameters
 paramName<-c("ka","V","Cl")
+#paramName<-c("Emax","C50","S0")
 
 paramF<-c(paramName,"t")
 
 #model equation
-form1<- c("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))")
-
+form1<- equation
 
 PSI<-c(paramName,"sig.inter", "sig.slope")
-
-
-#--------------------------------------------
-#calculate Fisher Information Matrix
-#--------------------------------------------
-
-#number of subjects
-n=32
-#enter the number of groups
-# cat(" Enter the number of subject groups\n")
-# nn <- as.integer(readline(prompt = ""))
+lpsi<-length(PSI)
 
 #dose value
-dose<-c(100)
-
-#enter designs
-# t <- c()
-# for(i in 1:nn){
-#   cat("Enter the ",i,"th group initial design \n")
-#   cat("Enter the quantity of this design \n")
-#   ni[i] <- as.integer(readline(prompt = ""))
-#   ti=c()
-#   for(j in 1:ni[i]){
-#     tij <- as.numeric(readline(prompt = ""))
-#     ti <- c(ti,tij)
-#   }
-#   
-#   t <- c(t,ti) 
-# }
-t<-c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)
-
-#Fixed effects parameters values
-beta<-c(1.6,8,0.13)
+dose<-d
 
 #(Diagonal Matrix of) variance for inter-subject random effects:
-omega<-diag(c(0.7,0.02,0.06))
+omega<-diag(o)
 
 
 #Random effect model (1) = additive  (2) = exponential 
 #------------------------------------------------------------------
-Trand<-1;
 
 if ( Trand == 1 ) {
-#   beta <- beta + rnorm(length(t)*length(paramName), mean = 0, sd = omega)
-#   bm <- matrix(beta,nrow=3,ncol=12)
   form11 <- form1
   for(i in 1:length(paramName)){
     form11 <- gsub(paramName[i], paste0("(",paramName[i],"+b)"), form11)
@@ -60,23 +29,31 @@ if ( Trand == 1 ) {
   }
   
 } else {
-#   b = rnorm(length(t)*length(paramName), mean = 0, sd = omega)
-#   beta <- beta * t(exp(b))
-#   bm <- matrix(beta,nrow=3,ncol=12)
   form11 <- form1
   for(i in 1:length(paramName)){
     form11 <- gsub(paramName[i], paste0("(",paramName[i],"*exp(b))"), form11)
   }
 }
 
+#gather all groups of protocol
+M_f<-list()
+M_F <- matrix(rep(0),nrow=length(PSI)+length(paramName),ncol=length(PSI)+length(paramName))
+for(q in 1:length(t_group)){
+  t<-c()
+  t<-c(t_group[[q]])
+
 
 #calculate matrix E for n individuals
 equatf <- parse(text = form11, n=-1)
 f<-function(paramF){eval(equatf[[1]])}
 
+#Fixed effects parameters values
 ka = beta[1]
 V = beta[2]
 Cl = beta[3]
+# Emax = beta[1]
+# C50 = beta[2]
+# S0 = beta[3]
 
 param <- c(beta,t)
 #calculate the observations with personnal parameters
@@ -84,25 +61,21 @@ b <- 0
 fixed<-f(param)
 
 #Standard deviation of residual error (sig.inter+sig.slope*f)^2:
-sig.inter<-0.6
-sig.slope<-0.07
+sig.inter<-sigma[1]
+sig.slope<-sigma[2]
 
 var<-diag((sig.inter+sig.slope*fixed)^2)
 
 #calculate variance Var
-form2<-paste0("( sig.inter + sig.slope * ", form11,")^2")
-#form2 <- paste0("( sig.inter + sig.slope * fixed )^2")
+form2 <- paste0("( sig.inter + sig.slope * fixed )^2")
 Vmodel<- parse(text = form2)
 
-epsilon<-rnorm(length(t), mean = 0, sd = diag(var))
-
-obs<-fixed+epsilon
-
-
+#get derivatives for fixed parameters
 df<-deriv(equatf[[1]],PSI)
 mdf<-attributes(eval(df))$gradient
 #delete the last two columns (correspond to sig.inter and sig.slope) 
 mdfi <- mdf[,-c(length(PSI)-1,length(PSI))]
+#complete derivative for exponential random effect model 
 if(Trand ==2 ){
   mdfie <- mdfi %*% diag(beta)
 }else {mdfie <- mdfi}
@@ -110,18 +83,22 @@ if(Trand ==2 ){
 #calculate variance Vi
 Vi <- mdfie %*% omega %*% t(mdfie) + var
 
-
+#get derivatives of sigma
 dv<-deriv(Vmodel[[1]],PSI)
 mdv<-attributes(eval(dv))$gradient
 
-
+#calculate matrix part A
 M_A <- t(mdfi) %*% solve(Vi) %*% mdfi 
+#complete the rest of the matrix with 0
 for(i in 1:length(PSI)){
   M_A <- cbind(M_A,0)
   M_A <- rbind(M_A,0)
 }
 
+#calculate matrix part B
+#initialize the matrix with 0
 M_B <- matrix(rep(0),nrow=length(PSI)+length(paramName),ncol=length(PSI)+length(paramName))
+#calculate first three rows of part B
 for(i in 1:length(paramName)){
   
   for(j in 1:length(paramName)){
@@ -132,7 +109,7 @@ for(i in 1:length(paramName)){
   }
   
 }
-
+#calculate the last two rows of partB
 for(i in (length(PSI)-1):length(PSI)){
   for(j in 1:length(paramName)){
     M_B[length(paramName)+i,length(paramName)+j] <- 1/2 * sum(diag( diag(mdv[,i]) %*% solve(Vi) %*% (mdfie[,j] %*% t(mdfie[,j])) %*% solve(Vi)))
@@ -141,7 +118,57 @@ for(i in (length(PSI)-1):length(PSI)){
     M_B[length(paramName)+i,length(paramName)+j] <- 1/2 * sum(diag(diag(mdv[,i]) %*% solve(Vi) %*% diag(mdv[,j]) %*% solve(Vi)))
   }
 }
-M_F <- M_A+M_B
+M_f[[q]] <- (M_A+M_B)*nbSubjects[q]
+M_F <-M_F+M_f[[q]]
+}
+rownames(M_F) <- c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope")
+colnames(M_F) <- c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope")
+
+if(sig.slope ==0){
+  M_F <- M_F[,-c(lpsi+length(paramName))]
+  M_F <- M_F[-c(lpsi+length(paramName)),]
+  PSI <- PSI[-c(lpsi)]
+}
+if(sig.inter == 0){
+  M_F <- M_F[,-c(lpsi+length(paramName)-1)]
+  M_F <- M_F[-c(lpsi+length(paramName)-1),]
+  PSI <- PSI[-c(lpsi-1)]
+ }
+
+deterFim <- det(M_F)
+SE <- diag(sqrt(solve(M_F)))
+RSE <- 100 * SE / c(beta,o,sigma)
+CritereDopt <- deterFim^(1/(length(PSI)+length(paramName)))
+
+
+SE <- setNames(SE, c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope"))
+RSE <- setNames(RSE, c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope"))
+
+#return(list(M_F,deterFim,SE,RSE,CritereDopt))
+
+#write the output into a text file
+#sink('D:\\insa\\inserm\\ExoPFIM\\ex2\\rfimp.txt')
+cat("******************* FISHER INFORMATION MATRIX ******************\n")
+print(M_F)
+
+cat("\n\n******************* DETERMINANT OF THE MATRIX ******************\n", deterFim,
+    "\n\n******************* STANDARD ERROR ******************\n",SE,
+    "\n\n******************* RELATIVE STANDARD ERROR ******************\n",RSE,
+    "\n\n******************* CRITERION ******************\n",CritereDopt)
+
+#sink()
+
+
+}
+#exercice1
+#funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)),2,c(100),c(32))
+
+#exercice2
+funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 2, 9, 24, 48, 96),c(1, 6, 12, 36, 72, 120)),2,c(100),c(16,16))
+
+#exemple dose-reponse
+#funFIMem("Emax*t/(t+C50)+S0",c(30,500,5),c(0.09,0.09,0.09),c(1,0),list(c(0,100 , 300 , 500 , 1000 , 2500 , 5000)),2,c(0),c(1))
+
 
 
 
