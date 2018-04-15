@@ -1,14 +1,13 @@
-funFIMem <- function(equation,beta,o,sigma,t_group,Trand,d,nbSubjects){
+funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,nbSubjects){
 #Name of the fixed effects parameters
-paramName<-c("ka","V","Cl")
-#paramName<-c("Emax","C50","S0")
+MyNames<-c("p1","p2","p3","p4","p5","p6","p7","p8")
 
-paramF<-c(paramName,"t")
+paramF<-c(MyNames[1:length(paramName)],"t")
 
 #model equation
 form1<- equation
 
-PSI<-c(paramName,"sig.inter", "sig.slope")
+PSI<-c(MyNames[1:length(paramName)],"sig.inter", "sig.slope")
 lpsi<-length(PSI)
 
 #dose value
@@ -24,14 +23,14 @@ omega<-diag(o)
 if ( Trand == 1 ) {
   form11 <- form1
   for(i in 1:length(paramName)){
-    form11 <- gsub(paramName[i], paste0("(",paramName[i],"+b)"), form11)
+    form11 <- gsub(paramName[i], paste0("(",MyNames[i],"+b)"), form11)
     
   }
   
 } else {
   form11 <- form1
   for(i in 1:length(paramName)){
-    form11 <- gsub(paramName[i], paste0("(",paramName[i],"*exp(b))"), form11)
+    form11 <- gsub(paramName[i], paste0("(",MyNames[i],"*exp(b))"), form11)
   }
 }
 
@@ -48,12 +47,15 @@ equatf <- parse(text = form11, n=-1)
 f<-function(paramF){eval(equatf[[1]])}
 
 #Fixed effects parameters values
-ka = beta[1]
-V = beta[2]
-Cl = beta[3]
-# Emax = beta[1]
-# C50 = beta[2]
-# S0 = beta[3]
+
+if(length(paramName)>0){p1=beta[1]}
+if(length(paramName)>1){p2=beta[2]}
+if(length(paramName)>2){p3=beta[3]}
+if(length(paramName)>3){p4=beta[4]}
+if(length(paramName)>4){p5=beta[5]}
+if(length(paramName)>5){p6=beta[6]}
+if(length(paramName)>6){p7=beta[7]}
+if(length(paramName)>7){p8=beta[8]}
 
 param <- c(beta,t)
 #calculate the observations with personnal parameters
@@ -121,8 +123,18 @@ for(i in (length(PSI)-1):length(PSI)){
 M_f[[q]] <- (M_A+M_B)*nbSubjects[q]
 M_F <-M_F+M_f[[q]]
 }
-rownames(M_F) <- c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope")
-colnames(M_F) <- c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope")
+
+#set names for vectors 
+fname<-c()
+for(n in 1:length(paramName)){
+  fname<-c(fname,paste0(paramName[n],"_fixed"))
+}
+for(n in 1:length(paramName)){
+  fname<-c(fname,paste0(paramName[n],"_random"))
+}
+fname<-c(fname,"sig.inter","sig.slope")
+rownames(M_F) <- fname
+colnames(M_F) <- fname
 
 if(sig.slope ==0){
   M_F <- M_F[,-c(lpsi+length(paramName))]
@@ -137,17 +149,25 @@ if(sig.inter == 0){
 
 deterFim <- det(M_F)
 SE <- diag(sqrt(solve(M_F)))
-RSE <- 100 * SE / c(beta,o,sigma)
+if(sig.inter!=0 && sig.slope!=0){
+  RSE <- 100 * SE / c(beta,o,sigma)
+}
+if (sig.inter == 0 && sig.slope!=0){
+  RSE <- 100 * SE / c(beta,o,sig.slope)
+}
+if (sig.inter != 0 && sig.slope==0){
+  RSE <- 100 * SE / c(beta,o,sig.inter)
+}
+if (sig.inter == 0 && sig.slope==0){
+  RSE <- 100 * SE / c(beta,o)
+}
 CritereDopt <- deterFim^(1/(length(PSI)+length(paramName)))
 
 
-SE <- setNames(SE, c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope"))
-RSE <- setNames(RSE, c(paste0(paramName[1],"_fixed"),paste0(paramName[2],"_fixed"),paste0(paramName[3],"_fixed"),paste0(paramName[1],"_random"),paste0(paramName[2],"_random"),paste0(paramName[3],"_random"),"sig.inter","sig.slope"))
-
 #return(list(M_F,deterFim,SE,RSE,CritereDopt))
 
-#write the output into a text file
-#sink('D:\\insa\\inserm\\ExoPFIM\\ex2\\rfimp.txt')
+#write the output in console
+
 cat("******************* FISHER INFORMATION MATRIX ******************\n")
 print(M_F)
 
@@ -156,18 +176,16 @@ cat("\n\n******************* DETERMINANT OF THE MATRIX ******************\n", de
     "\n\n******************* RELATIVE STANDARD ERROR ******************\n",RSE,
     "\n\n******************* CRITERION ******************\n",CritereDopt)
 
-#sink()
-
 
 }
 #exercice1
-#funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)),2,c(100),c(32))
+#funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)),2,c(100),c(32))
 
 #exercice2
-funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 2, 9, 24, 48, 96),c(1, 6, 12, 36, 72, 120)),2,c(100),c(16,16))
+funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 2, 9, 24, 48, 96),c(1, 6, 12, 36, 72, 120)),2,c(100),c(16,16))
 
 #exemple dose-reponse
-#funFIMem("Emax*t/(t+C50)+S0",c(30,500,5),c(0.09,0.09,0.09),c(1,0),list(c(0,100 , 300 , 500 , 1000 , 2500 , 5000)),2,c(0),c(1))
+#funFIMem("Emax*t/(t+C50)+S0",c("Emax","C50","S0"),c(30,500,5),c(0.09,0.09,0.09),c(1,0),list(c(0,100 , 300 , 500 , 1000 , 2500 , 5000)),2,c(0),c(1))
 
 
 
