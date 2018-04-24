@@ -164,7 +164,7 @@ if (sig.inter == 0 && sig.slope==0){
 CritereDopt <- deterFim^(1/(length(PSI)+length(paramName)))
 
 
-#return(list(M_F,deterFim,SE,RSE,CritereDopt))
+return(list(M_F,deterFim,SE,RSE,CritereDopt))
 
 #write the output in console
 
@@ -182,7 +182,7 @@ cat("\n\n******************* DETERMINANT OF THE MATRIX ******************\n", de
 #funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)),2,c(100),c(32))
 
 #exercice2
-funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 2, 9, 24, 48, 96),c(1, 6, 12, 36, 72, 120)),2,c(100),c(16,16))
+#funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 2, 9, 24, 48, 96),c(1, 6, 12, 36, 72, 120)),2,c(100),c(16,16))
 
 #exemple dose-reponse
 #funFIMem("Emax*t/(t+C50)+S0",c("Emax","C50","S0"),c(30,500,5),c(0.09,0.09,0.09),c(1,0),list(c(0,100 , 300 , 500 , 1000 , 2500 , 5000)),2,c(0),c(1))
