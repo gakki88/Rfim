@@ -1,51 +1,72 @@
-#MultiPop<-function(model,paramName,paramValue,sigma,design_Init,lambda,dose,nbSubjects,iteration){
-  #source("D:\\yuxin\\AlgoMultip\\FIM.R")
-  source("D:\\insa\\inserm\\FIMmixte.R")
-
-d<-seq(0,5000,100)
-Designs<-combn(d,5)
-#Designs[,1]
-
-funFIMem("Emax*t/(t+C50)+S0",c("Emax","C50","S0"),c(30,500,5),c(0.09,0.09,0.09),c(1,0),list(d),2,c(0),c(1))
-
-w<-rep(1/dim(Designs)[2],dim(Designs)[2])
-
-MFi<-list()
-for(l in 1:dim(Designs)[2]){
-  MFi[[l]] <-funFIMem("Emax*t/(t+C50)+S0",c("Emax","C50","S0"),c(30,500,5),c(0.09,0.09,0.09),c(1,0),list(Designs[,l]),2,c(0),c(1))[[1]]
+MultiPop<-function(model,paramName,paramValue,omega,sigma,design_Init,Trand,lambda,dose,PropSubjects,nbD,delta,iteration){
+  source("D:\\yuxin\\AlgoMultip\\FIMmixte.R")
   
-}
+  
+  
+for(n in 1:length(nbD)){
+  start_time <- Sys.time()
+  Designs_ini<-combn(design_Init[[1]],nbD[n])
+  
+  MFi<-list()
+  Designs<-matrix(nrow=nbD[n])
+  for(l in 1:dim(Designs_ini)[2]){
+    tryCatch({
+    MFi[[l]] <-funFIMem(model,paramName,paramValue,omega,sigma,list(Designs_ini[,l]),Trand,dose,PropSubjects,1)[[1]]
+    Designs<-cbind(Designs,Designs_ini[,l])
+    }, error=function(e){})
+    
+  }
+  Designs<-Designs[,-1]
+  dd<-dim(Designs)[2]
+  w<-rep(1/dd,dd)
+  it<-0
+  
+  #Prepare the dimension for the matrix associated with weights
+  if((sigma[1]==0 && sigma[2]!=0) || (sigma[2]==0 && sigma[1]!=0)){
+    Mdim=length(paramName)*2+1
+  }
+  if(sigma[1]!=0 && sigma[2]!=0){
+    Mdim=length(paramName)*2+2
+  }
+  for(k in 1:iteration){
 
-it<-0
-for(k in 1:300){
-  mw<-list()
-  # if((sigma[1]==0 && sigma[2]!=0) || (sigma[2]==0 && sigma[1]!=0)){
-  #   Mdim=length(paramName)+1
-  # }
-  # if(sigma[1]==0 && sigma[2]==0){
-  #   Mdim=length(paramName)
-  # }
-  # if(sigma[1]!=0 && sigma[2]!=0){
-  #   Mdim=length(paramName)+2
-  # }
-  Mdim=7
-  Mw<-matrix(rep(0),nrow=Mdim,ncol=Mdim)
-  for(i in 1:dim(Designs)[2]){
-    mw[[i]]<-w[i]*MFi[[i]]
-    Mw<-Mw+mw[[i]]
+    #Initialize the matrix with the dimension above
+    Mw<-matrix(rep(0),nrow=Mdim,ncol=Mdim)
+    
+    for(i in 1:dd){
+      Mw<-Mw+w[i]*MFi[[i]]
+    }
+    
+    critd<-det(Mw)^(1/Mdim)     # D-criterion value
+    Dphi <- critd * solve(Mw)/Mdim            # calculate derivatives of function phi_D
+    d<-c()
+    for(j in 1:dd){
+      d<-c(d,sum(diag(Dphi %*% MFi[[j]])))
+    }
+    w<- w*d^lambda/sum(w*d^lambda)
+    if(max(d)<(1+delta)*sum(w*d)){break}
+    it<-it+1
   }
-  #m<-solve(Mw)
-  critd<-det(Mw)^(1/Mdim)     # D-criterion value
-  Dphi <- critd * solve(Mw)/Mdim            # calculate derivatives of function phi_D
-  d<-c()
-  for(j in 1:dim(Designs)[2]){
-    d<-c(d,sum(diag(Dphi %*% MFi[[j]])))
+  end_time <- Sys.time()
+  plot(w,ylim=c(0,1))
+  v<-which(w>mean(w))
+  w1<-w[v]
+  e1<-funFIMem(model,paramName,paramValue,omega,sigma,design_Init,Trand,dose,PropSubjects,1)[[3]]
+  e2<-c()
+  for(q in 1:length(v)){
+    e2<-c(e2,funFIMem(model,paramName,paramValue,omega,sigma,list(Designs[,v[q]]),Trand,dose,PropSubjects,1)[[3]])
   }
-  w1<-w
-  lambda=0.9
-  w<- w*d^lambda/sum(w*d^lambda)
-  # if((w-w1)<1e-09){break}
-  # it<-it+1
+  
+  # "\n WEIGHT***********************************\n",w,
+  cat("\n NUMBER OF ITERATION**********************\n",it,
+      "\n UPPER INDEX*****************************\n",v,
+      "\n UPPER WEIGHTS***********************\n",w1,
+      "\n DETERMINANT**************************\n",e2,
+      "\n EFFICIENCY**************************\n",e1/e2,
+      "\n VALUED DESIGNS***********************\n")
+  print(Designs[,v])
+  cat("\n EXECUTE TIME********************",end_time - start_time,"\n")
+
 }
-#plot(w,ylim=c(0,1))
-#}
+  #return(list(w,Designs,it))
+}
