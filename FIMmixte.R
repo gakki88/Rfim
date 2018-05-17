@@ -13,22 +13,7 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
   omega<-diag(o)
   
   
-  #Random effect model (1) = additive  (2) = exponential 
-  #------------------------------------------------------------------
-  
-  if ( Trand == 1 ) {
-    form11 <- form1
-    for(i in 1:length(paramName)){
-      form11 <- gsub(paramName[i], paste0("(",paramName[i],"+b)"), form11)
-      
-    }
-    
-  } else {
-    form11 <- form1
-    for(i in 1:length(paramName)){
-      form11 <- gsub(paramName[i], paste0("(",paramName[i],"*exp(b))"), form11)
-    }
-  }
+
   
   #gather all groups of protocol
   M_f<-list()
@@ -41,7 +26,7 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     dose<-d[q]
     
     #calculate matrix E for n individuals
-    equatf <- parse(text = form11, n=-1)
+    equatf <- parse(text = form1, n=-1)
     f<-function(paramF){eval(equatf[[1]])}
     
     #Fixed effects parameters values
@@ -49,9 +34,8 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
       assign(paramName[i],beta[i])
     }
     
-    param <- c(beta,t)
     #calculate the observations with personnal parameters
-    b <- 0
+    param <- c(beta,t)
     fixed<-f(param)
     
     #Standard deviation of residual error (sig.inter+sig.slope*f)^2:
@@ -70,11 +54,14 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     mdf<-attributes(eval(df))$gradient
     #delete the last two columns (correspond to sig.inter and sig.slope) 
     mdfi <- mdf[,-c(length(PSI)-1,length(PSI))]
-    #complete derivative for exponential random effect model 
-    if(Trand ==2 ){
-      mdfie <- mdfi %*% diag(beta)
-    }else {mdfie <- mdfi}
-
+    #complete derivative for exponential random effect model   
+    #Random effect model (1) = additive  (2) = exponential 
+    #------------------------------------------------------------------
+    beta0 <- beta
+    beta0[which(Trand==1)] <- 1 
+    #if(Trand ==2 ){
+      mdfie <- mdfi %*% diag(beta0)
+    #}else {mdfie <- mdfi}
      
     #calculate variance Vi
     Vi <- mdfie %*% omega %*% t(mdfie) + var
@@ -138,39 +125,23 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     fname<-c(fname,paste0("u_",paramName[n]))
   }
   for(n in 1:length(paramName)){
-    fname<-c(fname,paste0("w_",paramName[n]))
+    fname<-c(fname,paste0("w2_",paramName[n]))
   }
   fname<-c(fname,"sig.inter","sig.slope")
   rownames(M_F) <- fname
   colnames(M_F) <- fname
   
-  if(sig.slope ==0){
-    M_F <- M_F[,-c(lpsi+length(paramName))]
-    M_F <- M_F[-c(lpsi+length(paramName)),]
-    PSI <- PSI[-c(lpsi)]
+  if(0 %in% c(o,sigma)){
+    M_F<-M_F[-c(length(paramName)+which(c(o,sigma)==0)),-c(length(paramName)+which(c(o,sigma)==0))]
+    PSI<- PSI[-c(length(paramName)+which(c(o,sigma)==0))]
   }
-  if(sig.inter == 0){
-    M_F <- M_F[,-c(lpsi+length(paramName)-1)]
-    M_F <- M_F[-c(lpsi+length(paramName)-1),]
-    PSI <- PSI[-c(lpsi-1)]
-  }
-  if(length(t)==1){
-    return(M_F)
+
+  if(length(t)==1 || (cor(M_F)==1) ){
+    return(list(M_F,det(M_F)))
   }else{
     deterFim <- det(M_F)
     SE <- sqrt(diag(solve(M_F)))
-    if(sig.inter!=0 && sig.slope!=0){
-      RSE <- 100 * SE / c(beta,o,sigma)
-    }
-    if (sig.inter == 0 && sig.slope!=0){
-      RSE <- 100 * SE / c(beta,o,sig.slope)
-    }
-    if (sig.inter != 0 && sig.slope==0){
-      RSE <- 100 * SE / c(beta,o,sig.inter)
-    }
-    if (sig.inter == 0 && sig.slope==0){
-      RSE <- 100 * SE / c(beta,o)
-    }
+    RSE <- 100 * SE / c(beta,o,sigma)[which(c(beta,o,sigma)!=0)]
     CritereDopt <- deterFim^(1/(length(PSI)+length(paramName)))
     
 
@@ -197,7 +168,7 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
   
 }
 #exercice1
-#funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(24, 48, 72)),2,c(100),c(1),32)
+#funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 1, 2, 6, 9, 12, 24, 36, 48, 72, 96, 120)),2,c(100),c(1),32)
 
 #exercice2
 #funFIMem("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.7,0.02,0.06),c(0.6,0.07),list(c(0.5, 2, 9, 24, 48, 96),c(1, 6, 12, 36, 72, 120)),2,c(100,100),c(0.5,0.5),32)
