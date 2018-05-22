@@ -136,21 +136,28 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     PSI<- PSI[-c(length(paramName)+which(c(o,sigma)==0))]
   }
 
-  if(length(t)==1 || (cor(M_F)==1) ){
+  if(length(t)==1 ){
     return(list(M_F,det(M_F)))
   }else{
-    deterFim <- det(M_F)
-    SE <- sqrt(diag(solve(M_F)))
-    RSE <- 100 * SE / c(beta,o,sigma)[which(c(beta,o,sigma)!=0)]
-    CritereDopt <- deterFim^(1/(length(PSI)+length(paramName)))
-    
+    tryCatch({
+      deterFim <- det(M_F)
+      SE <- sqrt(diag(solve(M_F)))
+      RSE <- 100 * SE / c(beta,o,sigma)[which(c(beta,o,sigma)!=0)]
+      CritereDopt <- deterFim^(1/(length(PSI)+length(paramName)))
+      return(list(M_F,deterFim,CritereDopt,SE,RSE))
+    },error=function(e){
+      
+    },finally={
+      return(list(M_F,det(M_F)))
+    })
 
+#     
 #     t<-seq(min(unlist(t_group)),max(unlist(t_group)),(max(unlist(t_group))-min(unlist(t_group)))/100)
 #     x<-c(beta,t)
 #     fvalue<-f(x)
 #     lines(t,fvalue) #then plot the line of function
-    return(list(M_F,deterFim,CritereDopt,SE,RSE))
-    #return(M_F)
+
+    return(M_F)
     #write the output in console
     
     # cat("******************* FISHER INFORMATION MATRIX ******************\n")
