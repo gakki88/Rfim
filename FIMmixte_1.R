@@ -1,4 +1,4 @@
-funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubjects,nbTot){
+funFIMem_1 <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubjects,nbTot){
   #List of names of the fixed effects parameters and sampling times
   paramF<-c(paramName,"t")
   
@@ -66,6 +66,8 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
      
     #calculate variance Vi
     Vi <- mdfie %*% omega %*% t(mdfie) + var
+    #inverse of matrix Vi
+    SVi <- solve(Vi)
     
     #get derivatives of sigma
     dv<-deriv(Vmodel[[1]],PSI)
@@ -73,7 +75,7 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     
     
     #calculate matrix part A
-    M_A <- t(mdfi) %*% solve(Vi) %*% mdfi
+    M_A <- t(mdfi) %*% SVi %*% mdfi
      
     #complete the rest of the matrix with 0
     for(i in 1:length(PSI)){
@@ -98,21 +100,23 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     for(i in 1:lengthParameters){
       
       for(j in 1:lengthParameters){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% solve(Vi) %*% (mdfie[,j] %*% t(mdfie[,j])) %*% solve(Vi))))
+        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% SVi %*% (mdfie[,j] %*% t(mdfie[,j])) %*% SVi)))
       }
       for(j in (lpsi-1):lpsi){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% solve(Vi) %*% m[[j]] %*% solve(Vi))))
+        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% SVi %*% m[[j]] %*% SVi)))
       }
       
     }
     #calculate the last two rows of partB
     for(i in (lpsi-1):lpsi){
       for(j in 1:lengthParameters){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag( m[[i]] %*% solve(Vi) %*% (mdfie[,j] %*% t(mdfie[,j])) %*% solve(Vi)))
+        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag( m[[i]] %*% SVi %*% (mdfie[,j] %*% t(mdfie[,j])) %*% SVi))
       }
-      for(j in (length(PSI)-1):length(PSI)){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(m[[i]] %*% solve(Vi) %*% m[[j]] %*% solve(Vi)))
+      
+      for(j in (lpsi-1):lpsi){
+        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(m[[i]] %*% SVi %*% m[[j]] %*% SVi))
       }
+      
     }
     
     M_f[[q]] <- (M_A+M_B)*PropSubjects[q]
