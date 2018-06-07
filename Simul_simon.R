@@ -59,7 +59,7 @@ simul_effectE<-function(Nsub,dose,t,a_sig,seed,Directory1,Directory2){
 
   set.seed(seed)
   # 4 for the number of sampling times correspond to each dose
-  Error<-rnorm(Nsub*length(dose)*4,mean=0,sd=a_sig)
+  Error<-rnorm(sum(Nsub)*4,mean=0,sd=a_sig)
   E_sim<-E + Error
   E<-E_sim
   pat<-rep(1:sum(Nsub),each=4)
@@ -67,11 +67,11 @@ simul_effectE<-function(Nsub,dose,t,a_sig,seed,Directory1,Directory2){
   Dose<-c()
   Time<-c()
   for(j in 1:length(t)){
-    Dose<-c(Dose,rep(dose,times=length(Nsub),each=Nsub[j]*4))
+    Dose<-c(Dose,rep(dose[j],each=Nsub[j]*4))
     Time<-c(Time,rep(t[[j]],times=Nsub[j]))
   }
-  Data<-as.data.frame(cbind(pat,Dose,Time,E_sim,E))
-  names(Data)<-c("subject","dose","time","E_sim","E")
+  Data<-as.data.frame(cbind(pat,Dose,Time,E_sim))
+  names(Data)<-c("ID","dose","time","Y")
   setwd(Directory2)
   write.table(Data,paste("data",seed,".txt",sep=""),row.names=F,col.names=T,sep="\t",quote=F)
   rm(Data)
@@ -112,7 +112,7 @@ format_monolix2<-function(Nsim,Nsub,NsampM,Directory1,Directory2){
 
 # PD parameters
 VA_s<-55
-k_s<-0.0005
+k_s<-0.005
 be_s<-0.2
 Emax_s<-30
 ED50_s<-150
@@ -129,8 +129,8 @@ dose_s<-c(0, 50, 100, 500)
 t_s<-list(c(0, 168, 196, 672),c(0, 7, 644, 672),c(0, 7, 644, 672),c(0, 168, 196, 672))
 
 # number of subjects, of samples, of simulations
-Nsub_s<-c(75,75,75,75)
-#Nsub_s<-c(107,47,14,132)
+#Nsub_s<-c(75,75,75,75)
+Nsub_s<-c(107,47,14,132)
 Nsamp_s<-length(dose_s)
 NsampM_s<-Nsamp_s
 Nsim_s<-500
@@ -160,5 +160,28 @@ simul_param2(Nsim_s,Nsub_s,VA_s,k_s,be_s,Emax_s,ED50_s,BSV_s,seed_s,Directory1_s
 simul_effectE(Nsub_s,dose_s,t_s,a_sig_s,seed_s,Directory1_s,Directory2_s)
 simul_effectE2(Nsim_s,Nsub_s,dose_s,t_s,a_sig_s,seed_s,Directory1_s,Directory2_s)
 
-format_monolix(Nsub_s,NsampM_s,seed_s,Directory2_s,Directory3_s)
-format_monolix2(Nsim_s,Nsub_s,NsampM_s,Directory2_s,Directory3_s)
+# format_monolix(Nsub_s,NsampM_s,seed_s,Directory2_s,Directory3_s)
+# format_monolix2(Nsim_s,Nsub_s,NsampM_s,Directory2_s,Directory3_s)
+
+
+# Plot spaghetti graphique
+##################################################################
+setwd("D:\\yuxin\\Simulation\\Data_original")
+Data<-read.table(paste("data",2,".txt",sep=""),header=T,sep="\t")
+#prepare for the line
+t<-seq(0,672,1)
+equatf <- parse(text = "VA_s+(1-exp(-k_s*t))*(Emax_s*dose/(ED50_s+dose)-be_s*VA_s)", n=-1)
+f<-function(paramF){eval(equatf[[1]])}
+
+par(mfrow=c(1,4))
+for(i in 1:length(dose_s)){
+  Data1<-Data[which(Data$dose==dose_s[i]),]
+  plot(x=Data1$time,y=Data1$Y,col="grey0",ylim=c(0,120),main=paste0(dose_s[i]," µg ( N = ",Nsub_s[i]," )"),xlab="Time (day)",ylab="VA (number of letters)")
+  dose<-dose_s[i]
+  x<-c(VA_s,k_s,be_s,Emax_s,ED50_s,dose,t)
+  fvalue<-f(x)
+  # the line of the model function with manually ajusted y_axis
+  lines(t,fvalue,type="l",lwd=3) 
+}
+
+
