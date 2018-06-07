@@ -1,11 +1,11 @@
-http://gforge.se/2015/02/how-to-go-parallel-in-r-basics-tips/
+#http://gforge.se/2015/02/how-to-go-parallel-in-r-basics-tips/
 
 MultiPop<-function(model,paramName,paramValue,omega,sigma,S_times,fixed_times,Trand,lambda,dose,PropSubjects,nbTimes,delta,iteration){
-    
+  library(tictoc)
     source("D:\\yuxin\\AlgoMultip\\FIMmixte.R")
     #for(n in 1:length(nbTimes)){
 
-      start_time <- Sys.time()
+    tic("function running time ")
       Designs_ini<-combn(S_times[[1]],nbTimes[1])
       
       if(length(fixed_times)>0){
@@ -41,20 +41,21 @@ MultiPop<-function(model,paramName,paramValue,omega,sigma,S_times,fixed_times,Tr
         dm<-dim(Mw)[1]
         critd<-det(Mw)^(1/dm)                   # D-criterion value
         Dphi <- critd * solve(Mw)/dm            # calculate derivatives of function phi_D
-        
-        ncores = detectCores()
-        cl = makeCluster(ncores-1)
-        clusterExport(cl, "Dphi")
-        d<-unlist(parLapply(cl,MFi, FUN = function(x) sum(diag(Dphi %*% x))))         #the vector of multiplier
-        stopCluster(cl)
-        
+#         library(parallel)
+#         ncores = detectCores()
+#         cl = makeCluster(ncores-1)
+#         clusterExport(cl, "Dphi", envir = environment())
+#         d<-parSapply(cl,MFi, FUN = function(x) sum(diag(Dphi %*% x)))         #the vector of multiplier
+#         stopCluster(cl)
+        d<-sapply(MFi, FUN = function(x) sum(diag(Dphi %*% x)))         #the vector of multiplier
+
         w<- w*d^lambda/sum(w*d^lambda)          #develop weight
         
         if(max(d)<(1+delta)*sum(w*d)){break}    #stop criterion
         it<-it+1                                #number of iteration calculator
         if(it%%100==0) print(it)
       }
-      end_time <- Sys.time()
+      toc()
       plot(w,ylim=c(0,1))
       v<-which(w>mean(w))
       w1<-w[v]
@@ -75,8 +76,10 @@ MultiPop<-function(model,paramName,paramValue,omega,sigma,S_times,fixed_times,Tr
       #       "\n EFFICIENCY**************************\n",e1/e2,
       cat("\n VALUED DESIGNS***********************\n")
       print(Designs[,v])
-      cat("\n EXECUTE TIME********************",end_time - start_time,"\n")
-      
-     #}
-     #return(list(w,Designs,it))
+#       x<-as.matrix(Designs[,v])
+      OptDesign <-lapply(seq_len(ncol(Designs[,v])), function(i) Designs[,v][,i])
+      OptFim <- funFIMem(model,paramName,paramValue,omega,sigma,OptDesign,Trand,OptDoses,w1,300)
+      print(OptFim)     
+#}
+     return(list(w,it,OptDesign,OptDoses))
   }

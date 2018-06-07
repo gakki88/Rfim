@@ -12,27 +12,22 @@ AlgoMult<-function(model,paramName,paramValue,sigma,design_Init,lambda,dose,Prop
   
   it<-0
   for(k in 1:iteration){
-    mw<-list()
-    if((sigma[1]==0 && sigma[2]!=0) || (sigma[2]==0 && sigma[1]!=0)){
-      Mdim=length(paramName)+1
-    }
-    if(sigma[1]!=0 && sigma[2]!=0){
-      Mdim=length(paramName)+2
-    }
-    Mw<-matrix(rep(0),nrow=Mdim,ncol=Mdim)
-    for(i in 1:length(design_Init[[1]])){
-      mw[[i]]<-w[i]*MFi[[i]]
-      Mw<-Mw+mw[[i]]
-    }
+    #Calculate the sum of matrix with weight associated
+    #idea:   Mw<-Mw+w[i]*MFi[[i]]
+    MFw<-Map("*",MFi,w)     #associate weights
+    Mw<-Reduce("+",MFw)     #sum of all matrices
+    dm<-dim(Mw)[1]
+    critd<-det(Mw)^(1/dm)                   # D-criterion value
+    Dphi <- critd * solve(Mw)/dm            # calculate derivatives of function phi_D
     
-    critd<-det(Mw)^(1/Mdim)     # D-criterion value
-    Dphi <- critd * solve(Mw)/Mdim            # calculate derivatives of function phi_D
-    d<-c()               #prepare the multiplier d (as a vector)
-    for(j in 1:length(design_Init[[1]])){
-      d<-c(d,sum(diag(Dphi %*% MFi[[j]])))
-    }
-    w<- w*d^lambda/sum(w*d^lambda)   #evolve weights
+#     ncores = detectCores()
+#     cl = makeCluster(ncores-1)
+#     clusterExport(cl, "Dphi")
+    d<-sapply(MFi, FUN = function(x) sum(diag(Dphi %*% x)))         #the vector of multiplier
+    #stopCluster(cl)
     
+    w<- w*d^lambda/sum(w*d^lambda)          #develop weight
+
     if(max(d)<(1+delta)*sum(w*d)){break}  #stop criterion
     
     it<-it+1

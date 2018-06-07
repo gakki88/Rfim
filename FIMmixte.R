@@ -1,43 +1,37 @@
-funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubjects,nbTot){
+funFIMem <- function(equation,parameters,beta,o,sigma,t_group,Trand,d,PropSubjects,nbTot){
   #List of names of the fixed effects parameters and sampling times
-  paramF<-c(paramName,"t")
-  
-  #model equation
-  form1<- equation
-  
-  PSI<-c(paramName,"sig.inter","sig.slope")
-  lpsi<-length(PSI)
-  lengthParameters<-length(paramName)
+  ParametersInEquation<-c(parameters,"t")
 
-  
+  PSI<-c(parameters,"sig.inter","sig.slope")
+  lpsi<-length(PSI)
+  lengthParameters<-length(parameters)
+
   #(Diagonal Matrix of) variance for inter-subject random effects:
   omega<-diag(o)
   
-  
-
   
   #gather all groups of protocol
   M_f<-list()
   M_F <- matrix(rep(0),nrow=lpsi+lengthParameters,ncol=lpsi+lengthParameters)
   for(q in 1:length(t_group)){
-    t<-c()
-    t<-c(t_group[[q]])
+    #design of sampling times
+    t<-t_group[[q]]
     
     #dose value
     dose<-d[q]
     
     #calculate matrix E for n individuals
-    equatf <- parse(text = form1, n=-1)
-    f<-function(paramF){eval(equatf[[1]])}
+    equatf <- parse(text = equation, n=-1)
+    f<-function(ParametersInEquation){eval(equatf[[1]])}
     
     #Fixed effects parameters values
     for(i in 1:lengthParameters){
-      assign(paramName[i],beta[i])
+      assign(parameters[i],beta[i])
     }
     
     #calculate the observations with personnal parameters
-    param <- c(beta,t)
-    fixed<-f(param)
+    parameterValues <- c(beta,t)
+    fixed<-f(parameterValues)
     
     #Standard deviation of residual error (sig.inter+sig.slope*f)^2:
     sig.inter<-sigma[1]
@@ -54,18 +48,18 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     df<-deriv(equatf[[1]],PSI)
     mdf<-attributes(eval(df))$gradient
     #delete the last two columns (correspond to sig.inter and sig.slope) 
-    mdfi <- mdf[,-c(length(PSI)-1,length(PSI))]
+    mdfi <- mdf[,-c(lpsi-1,lpsi)]
     #complete derivative for exponential random effect model   
     #Random effect model (1) = additive  (2) = exponential 
     #------------------------------------------------------------------
     beta0 <- beta
     beta0[which(Trand==1)] <- 1 
-    #if(Trand ==2 ){
-      mdfie <- mdfi %*% diag(beta0)
-    #}else {mdfie <- mdfi}
+    mdfie <- mdfi %*% diag(beta0)
      
     #calculate variance Vi
     Vi <- mdfie %*% omega %*% t(mdfie) + var
+    #inverse of matrix Vi
+    SVi <- solve(Vi)
     
     #get derivatives of sigma
     dv<-deriv(Vmodel[[1]],PSI)
@@ -73,46 +67,32 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
     
     
     #calculate matrix part A
-    M_A <- t(mdfi) %*% solve(Vi) %*% mdfi
+    M_A <- t(mdfi) %*% SVi %*% mdfi
      
     #complete the rest of the matrix with 0
-    for(i in 1:length(PSI)){
-      M_A <- cbind(M_A,0)
-      M_A <- rbind(M_A,0)
-    }
+    M_A <- cbind(M_A,matrix(rep(0),ncol=lpsi,nrow=lengthParameters))
+    M_A <- rbind(M_A,matrix(rep(0),ncol=lpsi+lengthParameters,nrow=lpsi))
     
     #calculate matrix part B
     #initialize the matrix with 0
     M_B <- matrix(rep(0),nrow=lpsi+lengthParameters,ncol=lpsi+lengthParameters)
     #prepare a list of matrix of derivatives of sigma to simplify usage
-    m<-list()
-    for(i in (lengthParameters+1):lpsi){
       if(length(t)==1){
-        m[[i]] <- mdv[i]
+        m <- lapply(c((lpsi-1),lpsi),function(i,mdv) mdv[i],mdv=mdv )
       }else{
-        m[[i]] <- diag(mdv[,i])
+        m <- lapply(c((lpsi-1),lpsi),function(i,mdv) diag(mdv[,i]),mdv=mdv )
       }
-      
-    }
+    
     #calculate first three rows of part B
     for(i in 1:lengthParameters){
-      
-      for(j in 1:lengthParameters){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% solve(Vi) %*% (mdfie[,j] %*% t(mdfie[,j])) %*% solve(Vi))))
-      }
-      for(j in (lpsi-1):lpsi){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(((mdfie[,i] %*% t(mdfie[,i])) %*% solve(Vi) %*% m[[j]] %*% solve(Vi))))
-      }
-      
+      mdfiei <- (mdfie[,i] %*% t(mdfie[,i]))
+      M_B[lengthParameters+i,seq(lengthParameters+1,lengthParameters+lengthParameters)] <- sapply( lapply(seq(1,lengthParameters), function(i,mdfie) mdfie[,i],mdfie=mdfie), function(x) 1/2 * sum(diag((mdfiei) %*% SVi %*% (x %*% t(x)) %*% SVi)))
+      M_B[lengthParameters+i,c(lengthParameters+lpsi-1,lengthParameters+lpsi)] <- sapply(m,function(x) 1/2 * sum(diag((mdfiei) %*% SVi %*% x %*% SVi)))
     }
     #calculate the last two rows of partB
     for(i in (lpsi-1):lpsi){
-      for(j in 1:lengthParameters){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag( m[[i]] %*% solve(Vi) %*% (mdfie[,j] %*% t(mdfie[,j])) %*% solve(Vi)))
-      }
-      for(j in (length(PSI)-1):length(PSI)){
-        M_B[lengthParameters+i,lengthParameters+j] <- 1/2 * sum(diag(m[[i]] %*% solve(Vi) %*% m[[j]] %*% solve(Vi)))
-      }
+      M_B[lengthParameters+i,seq(lengthParameters+1,lengthParameters+lengthParameters)] <- sapply(lapply(seq(1,lengthParameters), function(i,mdfie) mdfie[,i],mdfie=mdfie),function(x) 1/2 * sum(diag((m[[i-lengthParameters]]) %*% SVi %*% (x %*% t(x)) %*% SVi)))
+      M_B[lengthParameters+i,c(lengthParameters+lpsi-1,lengthParameters+lpsi)] <- sapply(m,function(x) 1/2 * sum(diag(((m[[i-lengthParameters]])) %*% SVi %*% x %*% SVi)))
     }
     
     M_f[[q]] <- (M_A+M_B)*PropSubjects[q]
@@ -121,14 +101,7 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
   M_F <- M_F *nbTot
   
   #set names for vectors 
-  fname<-c()
-  for(n in 1:lengthParameters){
-    fname<-c(fname,paste0("u_",paramName[n]))
-  }
-  for(n in 1:lengthParameters){
-    fname<-c(fname,paste0("w2_",paramName[n]))
-  }
-  fname<-c(fname,"sig.inter","sig.slope")
+  fname <-c(sapply(1:lengthParameters, function(x) paste0("u_",parameters[x])),sapply(1:lengthParameters, function(x) paste0("w2_",parameters[x])),"sig.inter","sig.slope")
   rownames(M_F) <- fname
   colnames(M_F) <- fname
   
@@ -144,7 +117,7 @@ funFIMem <- function(equation,paramName,beta,o,sigma,t_group,Trand,d,PropSubject
       deterFim <- det(M_F)
       SE <- sqrt(diag(solve(M_F)))
       RSE <- 100 * SE / c(beta,o,sigma)[which(c(beta,o,sigma)!=0)]
-      CritereDopt <- deterFim^(1/(length(PSI)+lengthParameters))
+      CritereDopt <- deterFim^(1/(lpsi+lengthParameters))
       return(list(M_F,deterFim,CritereDopt,SE,RSE))
     },error=function(e){
       return(list(M_F,det(M_F)))
