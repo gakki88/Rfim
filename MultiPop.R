@@ -1,6 +1,6 @@
 #http://gforge.se/2015/02/how-to-go-parallel-in-r-basics-tips/
 
-MultiPop<-function(model,paramName,paramValue,omega,sigma,S_times,fixed_times,Trand,lambda,dose,PropSubjects,nbTimes,delta,iteration){
+MultiPop<-function(model,paramName,paramValue,omega,sigma,S_times,fixed_times,Trand,lambda,dose,PropSubjects,nbTimes,delta,iteration,nbSubject){
   library(tictoc)
     source("D:\\yuxin\\AlgoMultip\\FIMmixte.R")
     #for(n in 1:length(nbTimes)){
@@ -57,7 +57,8 @@ MultiPop<-function(model,paramName,paramValue,omega,sigma,S_times,fixed_times,Tr
       }
       toc()
       plot(w,ylim=c(0,1))
-      v<-which(w>mean(w))
+#       v<-which(w>mean(w))
+      v<-which(w>0.01)
       w1<-w[v]
       ddose<-c(dose,dose)
       OptDoses<-ddose[v%%length(dose)+length(dose)]
@@ -76,10 +77,16 @@ MultiPop<-function(model,paramName,paramValue,omega,sigma,S_times,fixed_times,Tr
       #       "\n EFFICIENCY**************************\n",e1/e2,
       cat("\n VALUED DESIGNS***********************\n")
       print(Designs[,v])
-#       x<-as.matrix(Designs[,v])
       OptDesign <-lapply(seq_len(ncol(Designs[,v])), function(i) Designs[,v][,i])
-      OptFim <- funFIMem(model,paramName,paramValue,omega,sigma,OptDesign,Trand,OptDoses,w1,300)
-      print(OptFim)     
+      OptFim <- funFIMem(model,paramName,paramValue,omega,sigma,OptDesign,Trand,OptDoses,w1,nbSubject)
+      cat("******************* FISHER INFORMATION MATRIX ******************\n")
+      print(OptFim[[1]])
+      
+      cat("\n\n******************* DETERMINANT OF THE MATRIX ******************\n", OptFim[[2]],
+          "\n\n******************* CRITERION ******************\n",OptFim[[3]],
+          "\n\n******************* STANDARD ERROR ******************\n",OptFim[[4]],
+          "\n\n******************* RELATIVE STANDARD ERROR ******************\n",OptFim[[5]])
+
 #}
-     return(list(w,it,OptDesign,OptDoses))
+     return(list(w1,it,OptDesign,OptDoses))
   }
