@@ -107,7 +107,7 @@ if(length(t)==1){
   # cat("\n\n******************* DETERMINANT OF THE MATRIX ******************\n", deterFim,
   #     "\n\n******************* STANDARD ERROR ******************\n",SE,
   #     "\n\n******************* RELATIVE STANDARD ERROR ******************\n",RSE,
-  #     "\n\n******************* CRITERION ******************\n",CritereDopt)
+  #     "\n\n******************* CRITERION ******************\n",CritereDopt,"\n")
   
   #suppose just one group of design, plot the function and result points
 
@@ -135,4 +135,4 @@ if(length(t)==1){
 #funFIMsm("dose/V*ka/(ka-(Cl/V))*(exp(-(Cl/V)*t)-exp(-ka*t))",c("ka","V","Cl"),c(1.6,8,0.13),c(0.6,0.07),list(c(0.5, 2, 9, 24, 48, 96),c(1, 6, 12, 36, 72, 120)),c(100),c(0.5,0.5),32)
 
 #emample dose-response
-#funFIMsm("Emax*t/(t+C50)+S0",c("Emax","C50","S0"),c(30,500,5),c(1,0),list(c(0,100 , 300 , 500 , 1000 , 2500 , 5000)),0,c(1))
+#funFIMsm("Emax*t/(t+C50)+S0",c("Emax","C50","S0"),c(30,500,5),c(1,0),list(c(0,100 , 300 , 500 , 1000 , 2500 , 5000)),0,c(1),1)
