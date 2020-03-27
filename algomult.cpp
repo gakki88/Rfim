@@ -6,19 +6,19 @@
  *			       Yuxin Tang, INSERM UMR 1137 BIPID team
  *
  * INPUT VARIABLES FOR THE ENTRY POINT FUNCTION (multiplicativeAlgorithm) FROM R: 
- * Name		      		Type		        	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
  * originMatrices   double*         a list of fisher information matrices(FIM) computed by R functions 
  *                                  and read as a vector of values column by column in the following functions
  * weights          double*         a vector of weight corresponding to input FIMs and will evolve in the end
  *                                  of each iteration of algorithm
- * dim			      	int*			      the dimension of matrices (all matrices have same dimension)
- * n		        		int*	      		total number of input matrices
- * dimA		       		int*	      		the dimension of block A of matrix( all matrices have same dimension of 
+ * dim		    int*	    the dimension of matrices (all matrices have same dimension)
+ * n		    int*	    total number of input matrices
+ * dimA		    int*	    the dimension of block A of matrix( all matrices have same dimension of 
  *                                  block A)
- * lambda	      		double*		      a parameter of algorithm between 0 and 1
- * delta		      	double*		    	a precision of stop criterion of algorithm 
- * iteration	     	int*		      	the algorithm maximum number of iteration
+ * lambda	    double*	    a parameter of algorithm between 0 and 1
+ * delta	    double*	    a precision of stop criterion of algorithm 
+ * iteration	    int*	    the algorithm maximum number of iteration
 
 
  ALGORITHM
@@ -79,17 +79,17 @@ BOOL APIENTRY DllMain( HMODULE hModule, DWORD  ul_reason_for_call, LPVOID lpRese
  * DESCRIPTION: This function adds up a list of matrices as one matrix.
  * 
  * INPUT:
- * Name		      		Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * matrices		    	double*	    		a vector of n matrices column by colunm of dimension dim
- * size			      	int		      		total number of element of a matrix (size = dim * dim)
- * n		        		int		      		total number of matrices
+ * matrices	    double*	    a vector of n matrices column by colunm of dimension dim
+ * size		    int		    total number of element of a matrix (size = dim * dim)
+ * n		    int		    total number of matrices
  *
  * RETURN VALUE:
- * Name		       		Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * result		      	double*			    one matrix where each element equals the sum of element of input matrices at
- *									                that position 
+ * result	    double*	    one matrix where each element equals the sum of element of input matrices at
+ *				    that position 
  */
 void sum(double *matrices, int size, int n, double *result)
 {
@@ -119,17 +119,17 @@ void sum(double *matrices, int size, int n, double *result)
  * DESCRIPTION: This function multiplies each element in the matrix by a weight.
  *
  * INPUT:
- * Name		      		Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * matrices		      double*	    		a vector of n matrices column by colunm of dimension dim
- * weights	    		double*		    	n values, one for each matrix
- * size				      int		      		total number of element of a matrix (size = dim * dim)
- * n			        	int		      		total number of matrices
+ * matrices	    double*	    a vector of n matrices column by colunm of dimension dim
+ * weights	    double*	    n values, one for each matrix
+ * size		    int		    total number of element of a matrix (size = dim * dim)
+ * n		    int		    total number of matrices
  *
  * RETURN VALUE:
- * Name		      		Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * result		      	double*		      weighted matrices, same number of matrices as input
+ * result	    double*	    weighted matrices, same number of matrices as input
  */
 void MatrixTimesWeight(double *matrices, double *weights, int size, int n, double *result)
 {
@@ -152,18 +152,18 @@ void MatrixTimesWeight(double *matrices, double *weights, int size, int n, doubl
  * DESCRIPTION: This function decomposite a matrix as a lower traiangular matrix and an upper triangular matrix.
  *
  * INPUT:
- * Name			      	Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * matrix		      	double*		      a symmetric matrix, can be divided into two blocks independent non-zero 
+ * matrix	    double*	    a symmetric matrix, can be divided into two blocks independent non-zero 
  *                                  (block A,B)
- * dim			        int		      		dimension of an entire matrix
- * dimA			      	int		      		dimension of block A of the matrix (dimension of block B = dim - dimA)
+ * dim		    int		    dimension of an entire matrix
+ * dimA		    int		    dimension of block A of the matrix (dimension of block B = dim - dimA)
  *
  * RETURN VALUE:
- * Name		      		Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * L			        	double*		    	LU decomposition result -- lower matrix
- * U			        	double*		    	LU decomposition result -- upper matrix
+ * L		    double*	    LU decomposition result -- lower matrix
+ * U		    double*	    LU decomposition result -- upper matrix
  */
 void decompositionLU(double *matrix, double *L, double *U, int dim, int dimA) {
 	int i = 0, j, k, i_dim, i_j_dim, jj_dim;
@@ -231,19 +231,19 @@ void decompositionLU(double *matrix, double *L, double *U, int dim, int dimA) {
  * DESCRIPTION: This function inverses a symmetric matrix
  *
  * INPUT:
- * Name		      		Type	      		Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * m		        		double*	      	a symmetric matrix to be inversed, can be divided into two independent 
+ * m		    double*	    a symmetric matrix to be inversed, can be divided into two independent 
  *                                  blocks (A, B)
- * dim		      		int			      	dimension of an entire matrix
- * dimA		      		int		      		dimension of block A of the matrix (dimension of block B = dim - dimA)
- * detA			      	double		      determinant of block A
- * detB		      		double	    		determinant of block B
+ * dim		    int		    dimension of an entire matrix
+ * dimA		    int		    dimension of block A of the matrix (dimension of block B = dim - dimA)
+ * detA		    double	    determinant of block A
+ * detB		    double	    determinant of block B
  *
  * RETURN VALUE:
- * Name	      			Type		      	Description
+ * Name	      	    Type	    Description
  * ----------       ----------      ----------------------------
- * invM			      	double*		    	inversed matrix
+ * invM		    double*	    inversed matrix
  */
 void inverse(double *m, int dim, double *invM, int dimA, double detA, double detB)
 {
@@ -331,17 +331,17 @@ void inverse(double *m, int dim, double *invM, int dimA, double detA, double det
  *              product's trace
  *
  * INPUT:
- * Name		      		Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * matrices	      	double*	    		a list of matrices to produce with theMatrix
- * theMatrix	    	double*		    	the matrix to be multiplied with each matrices in the list
- * dim		      		int		      		dimension of an entire matrix
- * n			        	int			      	number of matrices in the list
+ * matrices	    double*	    a list of matrices to produce with theMatrix
+ * theMatrix	    double*	    the matrix to be multiplied with each matrices in the list
+ * dim		    int		    dimension of an entire matrix
+ * n		    int		    number of matrices in the list
  *
  * RETURN VALUE:
- * Name			      	Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * trace		        double*		    	the trace vector of each matrix product
+ * trace	    double*	    the trace vector of each matrix product
  */
 void computeTrace(double *matrices, double *theMatrix, int dim, int n, double *trace)
 {
@@ -387,22 +387,22 @@ void computeTrace(double *matrices, double *theMatrix, int dim, int n, double *t
  *              implemented in R-S4
  *
  * INPUT:
- * Name	      			Type		      	Description
+ * Name	      	    Type	    Description
  * ----------       ----------      ----------------------------
- * originMatrices	  double*		      a list of matrices computed by R functions
- * weights			    double*	      	a vector of weight corresponding to each matrix in the originMatrices list
- * dim				      int			      	dimension of an entire matrix (all same for matrices in the list)
- * n			        	int*	      		number of matrices in the list
- * dimA			      	int*		      	dimension of block A 
- * lambda		      	double*		      convergence power of the algorithm (0, 1]
- * delta		      	double*		    	algorithm stop criterion parameter
- * iteration		    int*	      		algorithm maximum iteration
+ * originMatrices   double*	    a list of matrices computed by R functions
+ * weights	    double*	    a vector of weight corresponding to each matrix in the originMatrices list
+ * dim		    int		    dimension of an entire matrix (all same for matrices in the list)
+ * n		    int*	    number of matrices in the list
+ * dimA		    int*	    dimension of block A 
+ * lambda	    double*	    convergence power of the algorithm (0, 1]
+ * delta	    double*	    algorithm stop criterion parameter
+ * iteration	    int*	    algorithm maximum iteration
  *
  * RETURN VALUE:
- * Name			      	Type		      	Description
+ * Name		    Type	    Description
  * ----------       ----------      ----------------------------
- * weights		    	double*		    	the vector of weights evolved by algorithm
- * iteration	    	int*	      		real iteration run number
+ * weights	    double*	    the vector of weights evolved by algorithm
+ * iteration	    int*	    real iteration run number
  */
 void multiplicativeAlgorithm(double *originMatrices, double *weights, int *dim,
 	int *n, int *dimA,	double *lambda, double *delta, int *iteration)
